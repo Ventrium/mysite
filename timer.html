@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>YouTube Frame Segmenter — Dark</title>
+<style>
+:root{--bg:#0f1113;--panel:#121417;--muted:#9aa3ad;--accent:#0a84ff;--red:#d9534f;--green:#44c16c;--card:#1f2428}
+html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:#e6eef6}
+.wrap{max-width:1100px;margin:20px auto;padding:18px}
+h1{margin:0 0 14px 0;font-size:20px;color:#fff}
+#player{width:100%;aspect-ratio:16/9;background:#000;border-radius:10px;margin-bottom:14px;box-shadow:0 6px 24px rgba(0,0,0,0.6);border:1px solid var(--card);display:block}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+input[type=text],input[type=number],select,textarea{background:var(--panel);border:1px solid var(--card);color:#e6eef6;padding:9px;border-radius:8px;font-size:14px;outline:none}
+textarea{min-height:120px;resize:vertical}
+button{background:var(--accent);border:none;color:white;padding:9px 12px;border-radius:8px;font-weight:600;cursor:pointer}
+button:active{transform:scale(.98)}
+.btn-ghost{background:transparent;border:1px solid var(--card);color:var(--muted)}
+.controls{display:flex;gap:8px;flex-wrap:wrap}
+.panel{background:linear-gradient(180deg,#0b0d0f,var(--panel));border-radius:10px;padding:12px;border:1px solid var(--card);margin-bottom:12px}
+.info-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.big{font-weight:700;color:#fff}
+.muted{color:var(--muted);font-size:13px}
+.segment-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.segment{display:grid;grid-template-columns:1fr 260px;gap:8px;padding:10px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);border:1px solid var(--card)}
+.segment-header{display:flex;gap:8px;align-items:center}
+.segment-controls{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+.small{font-size:13px;color:var(--muted)}
+.mark-start{background:var(--red)}
+.mark-start:hover{background:#c93b3b}
+.mark-end{background:var(--green)}
+.mark-end:hover{background:#34b65a}
+.mini{padding:6px 8px;border-radius:6px;font-size:13px}
+.seg-label{font-weight:600;color:#fff}
+.seg-times{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.seg-meta{font-size:13px;color:var(--muted)}
+.seg-actions{display:flex;gap:6px;align-items:center}
+.right{justify-self:end}
+@media (max-width:880px){.segment{grid-template-columns:1fr}}
+.segment input[type=text]{background:transparent;border:1px solid var(--card);padding:8px;border-radius:8px;color:#e6eef6}
+.remove-btn{background:transparent;border:1px solid #3a2e2e;color:#ff9b9b;padding:8px;border-radius:8px}
+.copy-btn{background:#2c6ee7;padding:9px 12px;border-radius:8px;border:none;color:white}
+.total-line{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.small-muted{font-size:12px;color:#99a2ad}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>YouTube Frame Segmenter — Dark</h1>
+<div class="panel">
+  <div class="row">
+    <input id="videoInput" type="text" placeholder="YouTube URL or ID" style="flex:1"/>
+    <button id="loadBtn">Load</button>
+    <input id="fpsInput" type="number" placeholder="FPS" value="30" style="width:80px"/>
+    <button id="applyFps" class="btn-ghost">Apply FPS</button>
+  </div>
+
+  <div id="player">Loading YouTube player…</div>
+
+  <div class="controls">
+    <button id="playPauseBtn">▶ Play / ❚❚ Pause</button>
+    <button class="mini" data-step="-1">◀ -1</button>
+    <button class="mini" data-step="1">+1 ▶</button>
+    <button class="mini" data-step="-5">◀ -5</button>
+    <button class="mini" data-step="-10">◀ -10</button>
+    <button class="mini" data-step="-15">◀ -15</button>
+    <button class="mini" data-step="5">+5 ▶</button>
+    <button class="mini" data-step="10">+10 ▶</button>
+    <button class="mini" data-step="15">+15 ▶</button>
+    <button class="mini" data-step="30">+30 ▶</button>
+    <input id="jumpFrameInput" type="number" placeholder="Frame #" style="width:120px"/>
+    <button id="jumpBtn" class="mini">Jump</button>
+  </div>
+
+  <div class="info-row">
+    <div style="min-width:220px">
+      <div class="big" id="frameDisplay">Frame: —</div>
+      <div class="small-muted">Time: <span id="timeDisplay">—</span> • FPS: <span id="fpsDisplay">30</span></div>
+    </div>
+    <div style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.01);border:1px solid var(--card);">
+      Duration: <span id="durationDisplay">—</span> • State: <span id="stateDisplay">—</span>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div style="display:flex;gap:8px;align-items:center;justify-content:space-between">
+    <div>
+      <button id="addSegmentBtn">+ Add Segment</button>
+    </div>
+    <div class="total-line">
+      <div class="small-muted">Total Frames: <strong id="totalFrames">0</strong></div>
+      <div class="small-muted">Total Time: <strong id="totalTime">—</strong></div>
+    </div>
+  </div>
+  <div id="segments" class="segment-list"></div>
+</div>
+
+<div class="panel">
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <div style="min-width:220px">
+      <div class="small-muted">Output mode</div>
+      <select id="outputMode" style="width:220px;padding:8px;border-radius:8px;background:var(--panel);color:#e6eef6;border:1px solid var(--card)">
+        <option value="formatted">Seconds (MM:SS.mmm)</option>
+        <option value="raw">Seconds (x.xxx s)</option>
+        <option value="frames">Frames</option>
+      </select>
+    </div>
+    <div>
+      <label class="small-muted"><input id="includeFPS" type="checkbox" checked /> Include FPS in note</label>
+    </div>
+    <div style="flex:1"></div>
+    <div>
+      <button id="genBtn">Generate Mod Note</button>
+      <button id="copyBtn" class="copy-btn">Copy</button>
+    </div>
+  </div>
+  <div style="margin-top:12px">
+    <textarea id="modNoteOutput" placeholder="Mod note will appear here..." readonly></textarea>
+  </div>
+</div>
+
+<div class="panel" style="display:flex;gap:8px;align-items:center;justify-content:space-between">
+  <div class="small-muted">Click a segment's "Mark Start" / "Mark End" when the player is at the desired frame.</div>
+  <div><button id="clearAll" class="btn-ghost">Clear All</button></div>
+</div>
+</div>
+
+<script>
+let player=null,fps=30,frameDuration=1/30,duration=0
+let segments=[],segCounter=0
+const qs=id=>document.getElementById(id)
+
+function pad(n,z=2){return String(n).padStart(z,"0")}
+function msToMMSSms(seconds){
+  if(isNaN(seconds))return"—"
+  const totalMs=Math.round(seconds*1000)
+  const minutes=Math.floor(totalMs/60000)
+  const secondsPart=Math.floor((totalMs%60000)/1000)
+  const ms=totalMs%1000
+  return `${pad(minutes)}:${pad(secondsPart)}.${pad(ms,3)}`
+}
+function round3(v){return Number(v).toFixed(3)}
+
+function parseYouTubeId(i){
+  if(!i)return null
+  i=i.trim()
+  const m=i.match(/[A-Za-z0-9_-]{11,}/)
+  if(!i.includes("http")&&m)return m[0]
+  try{
+    const u=new URL(i)
+    if(u.hostname.includes("youtu.be"))return u.pathname.slice(1)
+    if(u.searchParams.get("v"))return u.searchParams.get("v")
+    const x=u.pathname.match(/embed\/([A-Za-z0-9_-]+)/)
+    if(x)return x[1]
+  }catch{}
+  return m?m[0]:null
+}
+
+function ensureAPI(cb){
+  if(window.YT&&YT.Player){cb();return}
+  if(!document.getElementById('yt-if-api')){
+    const s=document.createElement('script');s.id='yt-if-api';s.src='https://www.youtube.com/iframe_api';document.head.appendChild(s)
+  }
+  const i=setInterval(()=>{if(window.YT&&YT.Player){clearInterval(i);cb()}},100)
+}
+
+function createPlayer(id){
+  ensureAPI(()=>{
+    if(player)player.destroy()
+    player=new YT.Player('player',{
+      videoId:id,
+      playerVars:{modestbranding:1,rel:0,controls:1},
+      events:{
+        onReady:()=>{duration=player.getDuration()||0;qs('durationDisplay').textContent=msToMMSSms(duration);qs('stateDisplay').textContent='Ready'},
+        onStateChange:e=>{
+          const s=e.data
+          if(s===1)qs('stateDisplay').textContent='Playing'
+          else if(s===2)qs('stateDisplay').textContent='Paused'
+          else if(s===0)qs('stateDisplay').textContent='Ended'
+        }
+      }
+    })
+  })
+}
+
+function updateDisplay(){
+  if(!player)return
+  const t=player.getCurrentTime()
+  const f=Math.floor(t*fps)
+  qs('frameDisplay').textContent=`Frame: ${f}`
+  qs('timeDisplay').textContent=msToMMSSms(t)
+  qs('fpsDisplay').textContent=fps
+}
+
+function stepFrames(n){if(!player)return;const t=player.getCurrentTime();player.pauseVideo();player.seekTo(Math.max(0,t+n*frameDuration),true);setTimeout(updateDisplay,160)}
+function togglePlayPause(){if(!player)return;const s=player.getPlayerState();if(s===1)player.pauseVideo();else player.playVideo()}
+qs('loadBtn').onclick=()=>{const id=parseYouTubeId(qs('videoInput').value);if(!id)return alert('Invalid YouTube link or ID');createPlayer(id)}
+qs('playPauseBtn').onclick=togglePlayPause
+
+document.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>stepFrames(parseFloat(b.dataset.step)))
+qs('jumpBtn').onclick=()=>{const f=parseFloat(qs('jumpFrameInput').value);if(isNaN(f))return;player.pauseVideo();player.seekTo(f/fps,true);setTimeout(updateDisplay,160)}
+
+qs('applyFps').onclick=()=>{
+  const v=parseFloat(qs('fpsInput').value)
+  if(isNaN(v)||v<=0)return alert('Enter a valid FPS >0')
+  fps=v
+  frameDuration=1/fps
+  qs('fpsDisplay').textContent=fps
+  renderSegments();updateTotals()
+}
+
+// Segments
+function addSegment(name="Segment"){
+  segCounter++
+  const seg={id:'s'+Date.now()+'_'+segCounter,name:`${name} ${segCounter}`,start:null,end:null}
+  segments.push(seg)
+  renderSegments();updateTotals()
+}
+function setSegmentStart(id){const s=segments.find(x=>x.id===id);if(!s||!player)return; s.start=Math.floor(player.getCurrentTime()*fps); renderSegments();updateTotals()}
+function setSegmentEnd(id){const s=segments.find(x=>x.id===id);if(!s||!player)return; s.end=Math.floor(player.getCurrentTime()*fps); renderSegments();updateTotals()}
+function goToFrame(frame){if(!player)return;player.pauseVideo();player.seekTo(frame/fps,true);setTimeout(updateDisplay,160)}
+function segLengthFrames(s){return (s.start!=null&&s.end!=null)?Math.abs(s.end-s.start):0}
+
+const segmentsContainer=qs('segments')
+function renderSegments(){
+  segmentsContainer.innerHTML=''
+  segments.forEach((s)=>{
+    const el=document.createElement('div')
+    el.className='segment'
+    el.innerHTML=`<div><input type="text" id="name-${s.id}" value="${escapeHtml(s.name)}"/></div>
+<div class="segment-controls">
+<button class="mark-start mini" data-id="${s.id}">Mark Start</button>
+<button class="mark-end mini" data-id="${s.id}">Mark End</button>
+<button class="btn-ghost mini" data-jumpstart="${s.id}">Go Start</button>
+<button class="btn-ghost mini" data-jumpend="${s.id}">Go End</button>
+<button class="remove-btn mini" data-remove="${s.id}">Remove</button>
+</div>
+<div style="grid-column:1/-1;margin-top:6px" class="small">
+Start: <strong id="${s.id}-start">${s.start==null?'—':s.start+' ('+msToMMSSms(s.start/fps)+')'}</strong>
+• End: <strong id="${s.id}-end">${s.end==null?'—':s.end+' ('+msToMMSSms(s.end/fps)+')'}</strong>
+• Length: <strong id="${s.id}-len">${(s.start!=null&&s.end!=null)?segLengthFrames(s)+' frames ('+msToMMSSms(segLengthFrames(s)/fps)+')':'—'}</strong>
+</div>`
+    segmentsContainer.appendChild(el)
+  })
+  attachSegmentListeners()
+}
+
+function attachSegmentListeners(){
+  document.querySelectorAll('.mark-start').forEach(b=>b.onclick=()=>setSegmentStart(b.dataset.id))
+  document.querySelectorAll('.mark-end').forEach(b=>b.onclick=()=>setSegmentEnd(b.dataset.id))
+  document.querySelectorAll('[data-jumpstart]').forEach(b=>b.onclick=()=>{const s=segments.find(x=>x.id===b.dataset.jumpstart);if(!s||s.start==null)return;goToFrame(s.start)})
+  document.querySelectorAll('[data-jumpend]').forEach(b=>b.onclick=()=>{const s=segments.find(x=>x.id===b.dataset.jumpend);if(!s||s.end==null)return;goToFrame(s.end)})
+  document.querySelectorAll('.remove-btn').forEach(b=>b.onclick=()=>{segments=segments.filter(x=>x.id!==b.dataset.remove);renderSegments();updateTotals()})
+  document.querySelectorAll('input[id^="name-"]').forEach(inp=>inp.onchange=()=>{const s=segments.find(x=>x.id===inp.id.replace('name-',''));if(s){s.name=inp.value.trim()||s.name;renderSegments();updateTotals()}})
+}
+
+function updateTotals(){
+  const valid=segments.filter(s=>s.start!=null&&s.end!=null)
+  const totalFrames=valid.reduce((a,s)=>a+segLengthFrames(s),0)
+  qs('totalFrames').textContent=totalFrames
+  qs('totalTime').textContent=totalFrames>0?msToMMSSms(totalFrames/fps):'—'
+}
+
+function generateModNote(){
+  const valid=segments.filter(s=>s.start!=null&&s.end!=null)
+  if(valid.length===0){qs('modNoteOutput').value='';return}
+  const mode=qs('outputMode').value
+  const includeFPS=qs('includeFPS').checked
+  let lines=[]
+  valid.forEach(s=>{
+    const startSec=s.start/fps,endSec=s.end/fps,durFrames=segLengthFrames(s),durSec=durFrames/fps
+    let startStr,endStr,timeStr
+    if(mode==='frames'){startStr=`${s.start}`;endStr=`${s.end}`;timeStr=`${durFrames} frames`}
+    else if(mode==='raw'){startStr=`${round3(startSec)}s`;endStr=`${round3(endSec)}s`;timeStr=`${round3(durSec)}s`}
+    else{startStr=msToMMSSms(startSec);endStr=msToMMSSms(endSec);timeStr=msToMMSSms(durSec)}
+    let line=`${s.name}: Start time: ${startStr}, end time: ${endStr}`
+    if(includeFPS)line+=` with a framerate of ${fps}`
+    line+=`, Time: ${timeStr}`
+    lines.push(line)
+  })
+  const totalFrames=valid.reduce((a,s)=>a+segLengthFrames(s),0)
+  const totalSec=totalFrames/fps
+  let finalTime=''
+  if(mode==='frames')finalTime=`${totalFrames} frames`
+  else if(mode==='raw')finalTime=`${round3(totalSec)}s`
+  else finalTime=msToMMSSms(totalSec)
+  qs('modNoteOutput').value=lines.join('\n\n')+`\n\nFinal Time: ${finalTime}`
+}
+
+qs('addSegmentBtn').onclick=()=>addSegment("Segment")
+qs('genBtn').onclick=()=>{updateTotals();generateModNote()}
+qs('copyBtn').onclick=()=>{const t=qs('modNoteOutput').value;if(!t)return alert('Nothing to copy');navigator.clipboard.writeText(t).then(()=>{qs('copyBtn').textContent='Copied!';setTimeout(()=>qs('copyBtn').textContent='Copy',1200)})}
+qs('clearAll').onclick=()=>{if(!confirm('Clear all segments?'))return;segments=[];segCounter=0;renderSegments();qs('modNoteOutput').value='';updateTotals()}
+
+setInterval(updateDisplay,250)
+
+function escapeHtml(s){return (s+'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+// ✅ Initialize baseplate segment
+window.addEventListener('DOMContentLoaded',()=>{
+  addSegment("Base Segment")
+})
+</script>
+</body>
+</html>
