@@ -3,13 +3,15 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>YouTube Frame Segmenter — Dark</title>
+<title>YouTube + HTML5 Frame Segmenter — Dark</title>
 <style>
 :root{--bg:#0f1113;--panel:#121417;--muted:#9aa3ad;--accent:#0a84ff;--red:#d9534f;--green:#44c16c;--card:#1f2428}
 html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:#e6eef6}
 .wrap{max-width:1100px;margin:20px auto;padding:18px}
 h1{margin:0 0 14px 0;font-size:20px;color:#fff}
-#player{width:100%;aspect-ratio:16/9;background:#000;border-radius:10px;margin-bottom:14px;box-shadow:0 6px 24px rgba(0,0,0,0.6);border:1px solid var(--card);display:block}
+#playerWrapper{position:relative}
+#player,#html5Player{width:100%;aspect-ratio:16/9;background:#000;border-radius:10px;margin-bottom:14px;box-shadow:0 6px 24px rgba(0,0,0,0.6);border:1px solid var(--card);display:block}
+#html5Player{display:none}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
 input[type=text],input[type=number],select,textarea{background:var(--panel);border:1px solid var(--card);color:#e6eef6;padding:9px;border-radius:8px;font-size:14px;outline:none}
 textarea{min-height:120px;resize:vertical}
@@ -46,16 +48,20 @@ button:active{transform:scale(.98)}
 </head>
 <body>
 <div class="wrap">
-<h1>YouTube Frame Segmenter — Dark</h1>
+<h1>YouTube + HTML5 Frame Segmenter — Dark</h1>
+
 <div class="panel">
   <div class="row">
-    <input id="videoInput" type="text" placeholder="YouTube URL or ID" style="flex:1"/>
+    <input id="videoInput" type="text" placeholder="YouTube URL, ID, or direct .mp4/.webm URL" style="flex:1"/>
     <button id="loadBtn">Load</button>
     <input id="fpsInput" type="number" placeholder="FPS" value="30" style="width:80px"/>
     <button id="applyFps" class="btn-ghost">Apply FPS</button>
   </div>
 
-  <div id="player">Loading YouTube player…</div>
+  <div id="playerWrapper">
+    <div id="player">Loading YouTube player…</div>
+    <video id="html5Player" controls crossorigin="anonymous"></video>
+  </div>
 
   <div class="controls">
     <button id="playPauseBtn">▶ Play / ❚❚ Pause</button>
@@ -85,9 +91,7 @@ button:active{transform:scale(.98)}
 
 <div class="panel">
   <div style="display:flex;gap:8px;align-items:center;justify-content:space-between">
-    <div>
-      <button id="addSegmentBtn">+ Add Segment</button>
-    </div>
+    <div><button id="addSegmentBtn">+ Add Segment</button></div>
     <div class="total-line">
       <div class="small-muted">Total Frames: <strong id="totalFrames">0</strong></div>
       <div class="small-muted">Total Time: <strong id="totalTime">—</strong></div>
@@ -129,18 +133,14 @@ button:active{transform:scale(.98)}
 <script>
 let player=null,fps=60,frameDuration=1/60,duration=0
 let segments=[],segCounter=0
+let activeMode="youtube" // youtube | html5
 const qs=id=>document.getElementById(id)
+const html5Player=qs("html5Player")
 
 function pad(n,z=2){return String(n).padStart(z,"0")}
-function msToMMSSms(seconds){
-  if(isNaN(seconds))return"—"
-  const totalMs=Math.round(seconds*1000)
-  const minutes=Math.floor(totalMs/60000)
-  const secondsPart=Math.floor((totalMs%60000)/1000)
-  const ms=totalMs%1000
-  return `${pad(minutes)}:${pad(secondsPart)}.${pad(ms,3)}`
-}
+function msToMMSSms(seconds){if(isNaN(seconds))return"—";const totalMs=Math.round(seconds*1000);const minutes=Math.floor(totalMs/60000);const secondsPart=Math.floor((totalMs%60000)/1000);const ms=totalMs%1000;return `${pad(minutes)}:${pad(secondsPart)}.${pad(ms,3)}`}
 function round3(v){return Number(v).toFixed(3)}
+function escapeHtml(s){return (s+'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 function parseYouTubeId(i){
   if(!i)return null
@@ -157,6 +157,22 @@ function parseYouTubeId(i){
   return m?m[0]:null
 }
 
+function isDirectVideoURL(url){
+  try{
+    const u=new URL(url)
+    return u.pathname.match(/\.(mp4|webm|mov|mkv|ogg)$/i)
+  }catch{}
+  return false
+}
+
+// Unified accessors
+function getCurrentTime(){return activeMode==="youtube"?player?.getCurrentTime()||0:html5Player.currentTime}
+function seekTo(seconds){if(activeMode==="youtube")player.seekTo(seconds,true);else html5Player.currentTime=seconds}
+function pauseVideo(){if(activeMode==="youtube")player.pauseVideo();else html5Player.pause()}
+function playVideo(){if(activeMode==="youtube")player.playVideo();else html5Player.play()}
+function getState(){if(activeMode==="youtube")return player?.getPlayerState()??-1;return html5Player.paused?2:1}
+function getDuration(){return activeMode==="youtube"?(player?.getDuration()||0):(html5Player.duration||0)}
+
 function ensureAPI(cb){
   if(window.YT&&YT.Player){cb();return}
   if(!document.getElementById('yt-if-api')){
@@ -172,7 +188,7 @@ function createPlayer(id){
       videoId:id,
       playerVars:{modestbranding:1,rel:0,controls:1},
       events:{
-        onReady:()=>{duration=player.getDuration()||0;qs('durationDisplay').textContent=msToMMSSms(duration);qs('stateDisplay').textContent='Ready'},
+        onReady:()=>{duration=getDuration();qs('durationDisplay').textContent=msToMMSSms(duration);qs('stateDisplay').textContent='Ready'},
         onStateChange:e=>{
           const s=e.data
           if(s===1)qs('stateDisplay').textContent='Playing'
@@ -184,22 +200,45 @@ function createPlayer(id){
   })
 }
 
+function loadHTML5Video(url){
+  activeMode="html5"
+  html5Player.style.display="block"
+  qs("player").style.display="none"
+  html5Player.src=url
+  html5Player.load()
+  html5Player.onloadedmetadata=()=>{
+    duration=getDuration()
+    qs("durationDisplay").textContent=msToMMSSms(duration)
+    qs("stateDisplay").textContent="Ready"
+  }
+  html5Player.onplay=()=>qs("stateDisplay").textContent="Playing"
+  html5Player.onpause=()=>qs("stateDisplay").textContent="Paused"
+  html5Player.onended=()=>qs("stateDisplay").textContent="Ended"
+}
+
 function updateDisplay(){
-  if(!player)return
-  const t=player.getCurrentTime()
+  if(activeMode!=="youtube"&&html5Player.readyState<1)return
+  const t=getCurrentTime()
   const f=Math.floor(t*fps)
   qs('frameDisplay').textContent=`Frame: ${f}`
   qs('timeDisplay').textContent=msToMMSSms(t)
   qs('fpsDisplay').textContent=fps
 }
 
-function stepFrames(n){if(!player)return;const t=player.getCurrentTime();player.pauseVideo();player.seekTo(Math.max(0,t+n*frameDuration),true);setTimeout(updateDisplay,160)}
-function togglePlayPause(){if(!player)return;const s=player.getPlayerState();if(s===1)player.pauseVideo();else player.playVideo()}
-qs('loadBtn').onclick=()=>{const id=parseYouTubeId(qs('videoInput').value);if(!id)return alert('Invalid YouTube link or ID');createPlayer(id)}
-qs('playPauseBtn').onclick=togglePlayPause
+function stepFrames(n){pauseVideo();const t=getCurrentTime();seekTo(Math.max(0,t+n*frameDuration));setTimeout(updateDisplay,160)}
+function togglePlayPause(){const s=getState();if(s===1)pauseVideo();else playVideo()}
 
+qs("loadBtn").onclick=()=>{
+  const input=qs("videoInput").value.trim()
+  if(isDirectVideoURL(input)){loadHTML5Video(input);return}
+  const id=parseYouTubeId(input)
+  if(id){activeMode="youtube";qs("player").style.display="block";html5Player.style.display="none";createPlayer(id);return}
+  alert("Invalid video source. Enter a YouTube link or direct video URL (.mp4, .webm, etc.)")
+}
+
+qs('playPauseBtn').onclick=togglePlayPause
 document.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>stepFrames(parseFloat(b.dataset.step)))
-qs('jumpBtn').onclick=()=>{const f=parseFloat(qs('jumpFrameInput').value);if(isNaN(f))return;player.pauseVideo();player.seekTo(f/fps,true);setTimeout(updateDisplay,160)}
+qs('jumpBtn').onclick=()=>{const f=parseFloat(qs('jumpFrameInput').value);if(isNaN(f))return;pauseVideo();seekTo(f/fps);setTimeout(updateDisplay,160)}
 
 qs('applyFps').onclick=()=>{
   const v=parseFloat(qs('fpsInput').value)
@@ -217,9 +256,9 @@ function addSegment(name="Segment"){
   segments.push(seg)
   renderSegments();updateTotals()
 }
-function setSegmentStart(id){const s=segments.find(x=>x.id===id);if(!s||!player)return; s.start=Math.floor(player.getCurrentTime()*fps); renderSegments();updateTotals()}
-function setSegmentEnd(id){const s=segments.find(x=>x.id===id);if(!s||!player)return; s.end=Math.floor(player.getCurrentTime()*fps); renderSegments();updateTotals()}
-function goToFrame(frame){if(!player)return;player.pauseVideo();player.seekTo(frame/fps,true);setTimeout(updateDisplay,160)}
+function setSegmentStart(id){const s=segments.find(x=>x.id===id);if(!s)return; s.start=Math.floor(getCurrentTime()*fps); renderSegments();updateTotals()}
+function setSegmentEnd(id){const s=segments.find(x=>x.id===id);if(!s)return; s.end=Math.floor(getCurrentTime()*fps); renderSegments();updateTotals()}
+function goToFrame(frame){pauseVideo();seekTo(frame/fps);setTimeout(updateDisplay,160)}
 function segLengthFrames(s){return (s.start!=null&&s.end!=null)?Math.abs(s.end-s.start):0}
 
 const segmentsContainer=qs('segments')
@@ -250,57 +289,4 @@ function attachSegmentListeners(){
   document.querySelectorAll('.mark-start').forEach(b=>b.onclick=()=>setSegmentStart(b.dataset.id))
   document.querySelectorAll('.mark-end').forEach(b=>b.onclick=()=>setSegmentEnd(b.dataset.id))
   document.querySelectorAll('[data-jumpstart]').forEach(b=>b.onclick=()=>{const s=segments.find(x=>x.id===b.dataset.jumpstart);if(!s||s.start==null)return;goToFrame(s.start)})
-  document.querySelectorAll('[data-jumpend]').forEach(b=>b.onclick=()=>{const s=segments.find(x=>x.id===b.dataset.jumpend);if(!s||s.end==null)return;goToFrame(s.end)})
-  document.querySelectorAll('.remove-btn').forEach(b=>b.onclick=()=>{segments=segments.filter(x=>x.id!==b.dataset.remove);renderSegments();updateTotals()})
-  document.querySelectorAll('input[id^="name-"]').forEach(inp=>inp.onchange=()=>{const s=segments.find(x=>x.id===inp.id.replace('name-',''));if(s){s.name=inp.value.trim()||s.name;renderSegments();updateTotals()}})
-}
-
-function updateTotals(){
-  const valid=segments.filter(s=>s.start!=null&&s.end!=null)
-  const totalFrames=valid.reduce((a,s)=>a+segLengthFrames(s),0)
-  qs('totalFrames').textContent=totalFrames
-  qs('totalTime').textContent=totalFrames>0?msToMMSSms(totalFrames/fps):'—'
-}
-
-function generateModNote(){
-  const valid=segments.filter(s=>s.start!=null&&s.end!=null)
-  if(valid.length===0){qs('modNoteOutput').value='';return}
-  const mode=qs('outputMode').value
-  const includeFPS=qs('includeFPS').checked
-  let lines=[]
-  valid.forEach(s=>{
-    const startSec=s.start/fps,endSec=s.end/fps,durFrames=segLengthFrames(s),durSec=durFrames/fps
-    let startStr,endStr,timeStr
-    if(mode==='frames'){startStr=`${s.start}`;endStr=`${s.end}`;timeStr=`${durFrames} frames`}
-    else if(mode==='raw'){startStr=`${round3(startSec)}s`;endStr=`${round3(endSec)}s`;timeStr=`${round3(durSec)}s`}
-    else{startStr=msToMMSSms(startSec);endStr=msToMMSSms(endSec);timeStr=msToMMSSms(durSec)}
-    let line=`${s.name}: Start time: ${startStr}, end time: ${endStr}`
-    if(includeFPS)line+=` with a framerate of ${fps}`
-    line+=`, Time: ${timeStr}`
-    lines.push(line)
-  })
-  const totalFrames=valid.reduce((a,s)=>a+segLengthFrames(s),0)
-  const totalSec=totalFrames/fps
-  let finalTime=''
-  if(mode==='frames')finalTime=`${totalFrames} frames`
-  else if(mode==='raw')finalTime=`${round3(totalSec)}s`
-  else finalTime=msToMMSSms(totalSec)
-  qs('modNoteOutput').value=lines.join('\n\n')+`\n\nFinal Time: ${finalTime}`
-}
-
-qs('addSegmentBtn').onclick=()=>addSegment("Segment")
-qs('genBtn').onclick=()=>{updateTotals();generateModNote()}
-qs('copyBtn').onclick=()=>{const t=qs('modNoteOutput').value;if(!t)return alert('Nothing to copy');navigator.clipboard.writeText(t).then(()=>{qs('copyBtn').textContent='Copied!';setTimeout(()=>qs('copyBtn').textContent='Copy',1200)})}
-qs('clearAll').onclick=()=>{if(!confirm('Clear all segments?'))return;segments=[];segCounter=0;renderSegments();qs('modNoteOutput').value='';updateTotals()}
-
-setInterval(updateDisplay,250)
-
-function escapeHtml(s){return (s+'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-
-// ✅ Initialize baseplate segment
-window.addEventListener('DOMContentLoaded',()=>{
-  addSegment("Base Segment")
-})
-</script>
-</body>
-</html>
+  document.querySelectorAll('[data-jumpend]').forEach(b=>b.onclick=()=>{const s=I can do that — but first I need **one clarification** so I generate the correct file:
