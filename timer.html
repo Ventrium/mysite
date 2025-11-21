@@ -131,17 +131,20 @@ button:active{transform:scale(.98)}
 </div>
 
 <script>
-let player=null,fps=60,frameDuration=1/60,duration=0
-let segments=[],segCounter=0
-let activeMode="youtube" // youtube | html5
+// ------------------ Core variables ------------------
+let player=null, fps=30, frameDuration=1/30, duration=0;
+let segments=[], segCounter=0;
+let activeMode="youtube"; // youtube | html5
 const qs=id=>document.getElementById(id)
 const html5Player=qs("html5Player")
 
+// ------------------ Utility functions ------------------
 function pad(n,z=2){return String(n).padStart(z,"0")}
 function msToMMSSms(seconds){if(isNaN(seconds))return"—";const totalMs=Math.round(seconds*1000);const minutes=Math.floor(totalMs/60000);const secondsPart=Math.floor((totalMs%60000)/1000);const ms=totalMs%1000;return `${pad(minutes)}:${pad(secondsPart)}.${pad(ms,3)}`}
 function round3(v){return Number(v).toFixed(3)}
 function escapeHtml(s){return (s+'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
+// ------------------ YouTube helper ------------------
 function parseYouTubeId(i){
   if(!i)return null
   i=i.trim()
@@ -156,7 +159,6 @@ function parseYouTubeId(i){
   }catch{}
   return m?m[0]:null
 }
-
 function isDirectVideoURL(url){
   try{
     const u=new URL(url)
@@ -165,7 +167,7 @@ function isDirectVideoURL(url){
   return false
 }
 
-// Unified accessors
+// ------------------ Unified player wrappers ------------------
 function getCurrentTime(){return activeMode==="youtube"?player?.getCurrentTime()||0:html5Player.currentTime}
 function seekTo(seconds){if(activeMode==="youtube")player.seekTo(seconds,true);else html5Player.currentTime=seconds}
 function pauseVideo(){if(activeMode==="youtube")player.pauseVideo();else html5Player.pause()}
@@ -173,6 +175,7 @@ function playVideo(){if(activeMode==="youtube")player.playVideo();else html5Play
 function getState(){if(activeMode==="youtube")return player?.getPlayerState()??-1;return html5Player.paused?2:1}
 function getDuration(){return activeMode==="youtube"?(player?.getDuration()||0):(html5Player.duration||0)}
 
+// ------------------ YouTube API loader ------------------
 function ensureAPI(cb){
   if(window.YT&&YT.Player){cb();return}
   if(!document.getElementById('yt-if-api')){
@@ -180,7 +183,6 @@ function ensureAPI(cb){
   }
   const i=setInterval(()=>{if(window.YT&&YT.Player){clearInterval(i);cb()}},100)
 }
-
 function createPlayer(id){
   ensureAPI(()=>{
     if(player)player.destroy()
@@ -200,6 +202,7 @@ function createPlayer(id){
   })
 }
 
+// ------------------ HTML5 Video loader ------------------
 function loadHTML5Video(url){
   activeMode="html5"
   html5Player.style.display="block"
@@ -216,6 +219,7 @@ function loadHTML5Video(url){
   html5Player.onended=()=>qs("stateDisplay").textContent="Ended"
 }
 
+// ------------------ Display update ------------------
 function updateDisplay(){
   if(activeMode!=="youtube"&&html5Player.readyState<1)return
   const t=getCurrentTime()
@@ -224,10 +228,13 @@ function updateDisplay(){
   qs('timeDisplay').textContent=msToMMSSms(t)
   qs('fpsDisplay').textContent=fps
 }
+setInterval(updateDisplay,250)
 
+// ------------------ Frame controls ------------------
 function stepFrames(n){pauseVideo();const t=getCurrentTime();seekTo(Math.max(0,t+n*frameDuration));setTimeout(updateDisplay,160)}
 function togglePlayPause(){const s=getState();if(s===1)pauseVideo();else playVideo()}
 
+// ------------------ Load button ------------------
 qs("loadBtn").onclick=()=>{
   const input=qs("videoInput").value.trim()
   if(isDirectVideoURL(input)){loadHTML5Video(input);return}
@@ -235,27 +242,13 @@ qs("loadBtn").onclick=()=>{
   if(id){activeMode="youtube";qs("player").style.display="block";html5Player.style.display="none";createPlayer(id);return}
   alert("Invalid video source. Enter a YouTube link or direct video URL (.mp4, .webm, etc.)")
 }
-
 qs('playPauseBtn').onclick=togglePlayPause
 document.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>stepFrames(parseFloat(b.dataset.step)))
 qs('jumpBtn').onclick=()=>{const f=parseFloat(qs('jumpFrameInput').value);if(isNaN(f))return;pauseVideo();seekTo(f/fps);setTimeout(updateDisplay,160)}
+qs('applyFps').onclick=()=>{const v=parseFloat(qs('fpsInput').value);if(isNaN(v)||v<=0)return alert('Enter a valid FPS >0');fps=v;frameDuration=1/fps;qs('fpsDisplay').textContent=fps;renderSegments();updateTotals()}
 
-qs('applyFps').onclick=()=>{
-  const v=parseFloat(qs('fpsInput').value)
-  if(isNaN(v)||v<=0)return alert('Enter a valid FPS >0')
-  fps=v
-  frameDuration=1/fps
-  qs('fpsDisplay').textContent=fps
-  renderSegments();updateTotals()
-}
-
-// Segments
-function addSegment(name="Segment"){
-  segCounter++
-  const seg={id:'s'+Date.now()+'_'+segCounter,name:`${name} ${segCounter}`,start:null,end:null}
-  segments.push(seg)
-  renderSegments();updateTotals()
-}
+// ------------------ Segments ------------------
+function addSegment(name="Segment"){segCounter++;segments.push({id:'s'+Date.now()+'_'+segCounter,name:`${name} ${segCounter}`,start:null,end:null});renderSegments();updateTotals()}
 function setSegmentStart(id){const s=segments.find(x=>x.id===id);if(!s)return; s.start=Math.floor(getCurrentTime()*fps); renderSegments();updateTotals()}
 function setSegmentEnd(id){const s=segments.find(x=>x.id===id);if(!s)return; s.end=Math.floor(getCurrentTime()*fps); renderSegments();updateTotals()}
 function goToFrame(frame){pauseVideo();seekTo(frame/fps);setTimeout(updateDisplay,160)}
@@ -289,4 +282,52 @@ function attachSegmentListeners(){
   document.querySelectorAll('.mark-start').forEach(b=>b.onclick=()=>setSegmentStart(b.dataset.id))
   document.querySelectorAll('.mark-end').forEach(b=>b.onclick=()=>setSegmentEnd(b.dataset.id))
   document.querySelectorAll('[data-jumpstart]').forEach(b=>b.onclick=()=>{const s=segments.find(x=>x.id===b.dataset.jumpstart);if(!s||s.start==null)return;goToFrame(s.start)})
-  document.querySelectorAll('[data-jumpend]').forEach(b=>b.onclick=()=>{const s=I can do that — but first I need **one clarification** so I generate the correct file:
+  document.querySelectorAll('[data-jumpend]').forEach(b=>b.onclick=()=>{const s=segments.find(x=>x.id===b.dataset.jumpend);if(!s||s.end==null)return;goToFrame(s.end)})
+  document.querySelectorAll('.remove-btn').forEach(b=>b.onclick=()=>{segments=segments.filter(x=>x.id!==b.dataset.remove);renderSegments();updateTotals()})
+  document.querySelectorAll('input[id^="name-"]').forEach(inp=>inp.onchange=()=>{const s=segments.find(x=>x.id===inp.id.replace('name-',''));if(s){s.name=inp.value.trim()||s.name;renderSegments();updateTotals()}})
+}
+
+function updateTotals(){
+  const valid=segments.filter(s=>s.start!=null&&s.end!=null)
+  const totalFrames=valid.reduce((a,s)=>a+segLengthFrames(s),0)
+  qs('totalFrames').textContent=totalFrames
+  qs('totalTime').textContent=totalFrames>0?msToMMSSms(totalFrames/fps):'—'
+}
+
+function generateModNote(){
+  const valid=segments.filter(s=>s.start!=null&&s.end!=null)
+  if(valid.length===0){qs('modNoteOutput').value='';return}
+  const mode=qs('outputMode').value
+  const includeFPS=qs('includeFPS').checked
+  let lines=[]
+  valid.forEach(s=>{
+    const startSec=s.start/fps,endSec=s.end/fps,durFrames=segLengthFrames(s),durSec=durFrames/fps
+    let startStr,endStr,timeStr
+    if(mode==='frames'){startStr=`${s.start}`;endStr=`${s.end}`;timeStr=`${durFrames} frames`}
+    else if(mode==='raw'){startStr=`${round3(startSec)}s`;endStr=`${round3(endSec)}s`;timeStr=`${round3(durSec)}s`}
+    else{startStr=msToMMSSms(startSec);endStr=msToMMSSms(endSec);timeStr=msToMMSSms(durSec)}
+    let line=`${s.name}: Start time: ${startStr}, end time: ${endStr}`
+    if(includeFPS)line+=` with a framerate of ${fps}`
+    line+=`, Time: ${timeStr}`
+    lines.push(line)
+  })
+  const totalFrames=valid.reduce((a,s)=>a+segLengthFrames(s),0)
+  const totalSec=totalFrames/fps
+  let finalTime=''
+  if(mode==='frames')finalTime=`${totalFrames} frames`
+  else if(mode==='raw')finalTime=`${round3(totalSec)}s`
+  else finalTime=msToMMSSms(totalSec)
+  qs('modNoteOutput').value=lines.join('\n\n')+`\n\nFinal Time: ${finalTime}`
+}
+
+// ------------------ Button bindings ------------------
+qs('addSegmentBtn').onclick=()=>addSegment("Segment")
+qs('genBtn').onclick=()=>{updateTotals();generateModNote()}
+qs('copyBtn').onclick=()=>{const t=qs('modNoteOutput').value;if(!t)return alert('Nothing to copy');navigator.clipboard.writeText(t).then(()=>{qs('copyBtn').textContent='Copied!';setTimeout(()=>qs('copyBtn').textContent='Copy',1200)})}
+qs('clearAll').onclick=()=>{if(!confirm('Clear all segments?'))return;segments=[];segCounter=0;renderSegments();qs('modNoteOutput').value='';updateTotals()}
+
+// ------------------ Initialize ------------------
+window.addEventListener('DOMContentLoaded',()=>{addSegment("Base Segment")})
+</script>
+</body>
+</html>
