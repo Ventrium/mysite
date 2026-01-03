@@ -1,0 +1,6 @@
+- All time is recorded in UTC -
+
+[2026-01-02 20:00]
+Day #1
+30 Rooms
+Seed: 164685696
