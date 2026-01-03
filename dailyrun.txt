@@ -4,6 +4,4 @@
 Day #1: MINES
 30 Rooms
 Seed: 164685696
-Present Entities: Hide, Blitz, Lookman,
-Eyes, Screech, Dread
-Door 0 loot: Smoothie + Crucifix.
+Door 0 loot: Smoothie + Crucifix
