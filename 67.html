@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>67 Speed Challenge</title>
+</head>
+<body>
+
+<h1>Type "67" 100 Times</h1>
+<p>Type 67 exactly 100 times as fast as possible.</p>
+
+<button onclick="startGame()">Start</button>
+
+<p id="timer">Time: 0.00 seconds</p>
+<p id="count">Correct Count: 0 / 100</p>
+
+<input type="text" id="input" disabled oninput="checkInput()">
+
+<p id="message"></p>
+
+<script>
+let startTime;
+let timerInterval;
+let completed = false;
+
+function startGame() {
+    completed = false;
+    document.getElementById("input").value = "";
+    document.getElementById("input").disabled = false;
+    document.getElementById("input").focus();
+
+    document.getElementById("message").innerText = "";
+    document.getElementById("count").innerText = "Correct Count: 0 / 100";
+
+    startTime = new Date().getTime();
+
+    clearInterval(timerInterval);
+
+    timerInterval = setInterval(() => {
+        let currentTime = new Date().getTime();
+        let seconds = ((currentTime - startTime) / 1000).toFixed(2);
+        document.getElementById("timer").innerText = "Time: " + seconds + " seconds";
+    }, 10);
+}
+
+function checkInput() {
+    if (completed) return;
+
+    let text = document.getElementById("input").value;
+
+    // Count occurrences of "67"
+    let matches = text.match(/67/g);
+    let count = matches ? matches.length : 0;
+
+    document.getElementById("count").innerText = "Correct Count: " + count + " / 100";
+
+    // Stop if exactly 100 "67"s typed
+    if (count >= 100) {
+        completed = true;
+
+        clearInterval(timerInterval);
+
+        let endTime = new Date().getTime();
+        let totalTime = ((endTime - startTime) / 1000).toFixed(2);
+
+        document.getElementById("message").innerText =
+            "Finished in " + totalTime + " seconds!";
+
+        document.getElementById("input").disabled = true;
+    }
+}
+</script>
+
+</body>
+</html>
