@@ -1,69 +1,235 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>67 Speed Challenge</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>67 Speed Challenge</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Inter, Arial, sans-serif;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background:
+        linear-gradient(135deg,#ff4d6d,#ff9e00,#7b61ff,#00c2ff);
+    background-size: 300% 300%;
+    animation: bgMove 12s ease infinite;
+}
+
+@keyframes bgMove {
+    0% { background-position:0% 50%; }
+    50% { background-position:100% 50%; }
+    100% { background-position:0% 50%; }
+}
+
+.card {
+    width: min(90vw, 700px);
+    padding: 40px;
+
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(18px);
+
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 24px;
+
+    text-align: center;
+    color: white;
+
+    box-shadow:
+        0 20px 60px rgba(0,0,0,0.25);
+}
+
+h1 {
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    opacity: 0.9;
+    margin-bottom: 30px;
+    font-size: 1.1rem;
+}
+
+button {
+    background: white;
+    color: #6a00ff;
+    border: none;
+    border-radius: 12px;
+
+    padding: 14px 28px;
+    font-size: 1rem;
+    font-weight: bold;
+
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+button:hover {
+    transform: translateY(-2px);
+}
+
+.timer {
+    margin-top: 30px;
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.count {
+    margin-top: 10px;
+    font-size: 1.4rem;
+}
+
+input {
+    width: 100%;
+    margin-top: 25px;
+
+    padding: 18px;
+
+    font-size: 1.3rem;
+    text-align: center;
+
+    border-radius: 14px;
+    border: none;
+    outline: none;
+}
+
+.message {
+    margin-top: 25px;
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+.highlight {
+    color: #fff700;
+}
+</style>
 </head>
 <body>
 
-<h1>Type "67" 100 Times</h1>
-<p>Type 67 exactly 100 times as fast as possible.</p>
+<div class="card">
 
-<button onclick="startGame()">Start</button>
+    <h1>67 Speed Challenge</h1>
 
-<p id="timer">Time: 0.00 seconds</p>
-<p id="count">Correct Count: 0 / 100</p>
+    <p class="subtitle">
+        Type <strong>67</strong> exactly 100 times as fast as possible.
+    </p>
 
-<input type="text" id="input" disabled oninput="checkInput()">
+    <button onclick="startGame()">Start</button>
 
-<p id="message"></p>
+    <div id="timer" class="timer">0.000</div>
+
+    <div id="count" class="count">
+        Correct Count: 0 / 100
+    </div>
+
+    <input
+        id="input"
+        type="text"
+        disabled
+        autocomplete="off"
+        spellcheck="false"
+        oninput="checkInput()"
+    >
+
+    <div id="message" class="message"></div>
+
+</div>
 
 <script>
-let startTime;
-let timerInterval;
+let startTime = null;
+let timerInterval = null;
 let completed = false;
+let timerStarted = false;
+
+const FRAME_MS = 1000 / 60;
 
 function startGame() {
+
     completed = false;
+    timerStarted = false;
+    startTime = null;
+
+    clearInterval(timerInterval);
+
     document.getElementById("input").value = "";
     document.getElementById("input").disabled = false;
     document.getElementById("input").focus();
 
-    document.getElementById("message").innerText = "";
+    document.getElementById("timer").innerText = "0.000";
     document.getElementById("count").innerText = "Correct Count: 0 / 100";
+    document.getElementById("message").innerText = "";
+}
 
-    startTime = new Date().getTime();
+function startTimer() {
 
-    clearInterval(timerInterval);
+    timerStarted = true;
+    startTime = performance.now();
 
     timerInterval = setInterval(() => {
-        let currentTime = new Date().getTime();
-        let seconds = ((currentTime - startTime) / 1000).toFixed(2);
-        document.getElementById("timer").innerText = "Time: " + seconds + " seconds";
-    }, 10);
+
+        const elapsed = performance.now() - startTime;
+
+        // Round to nearest 60 FPS frame
+        const frameRounded =
+            Math.round(elapsed / FRAME_MS) * FRAME_MS;
+
+        document.getElementById("timer").innerText =
+            (frameRounded / 1000).toFixed(3);
+
+    }, FRAME_MS);
 }
 
 function checkInput() {
+
     if (completed) return;
 
-    let text = document.getElementById("input").value;
+    const text =
+        document.getElementById("input").value;
 
-    // Count occurrences of "67"
-    let matches = text.match(/67/g);
-    let count = matches ? matches.length : 0;
+    // Start timer when first character typed is a 6
+    if (!timerStarted && text.length > 0 && text[0] === "6") {
+        startTimer();
+    }
 
-    document.getElementById("count").innerText = "Correct Count: " + count + " / 100";
+    const matches = text.match(/67/g);
+    const count = matches ? matches.length : 0;
 
-    // Stop if exactly 100 "67"s typed
+    document.getElementById("count").innerText =
+        `Correct Count: ${count} / 100`;
+
     if (count >= 100) {
+
         completed = true;
 
         clearInterval(timerInterval);
 
-        let endTime = new Date().getTime();
-        let totalTime = ((endTime - startTime) / 1000).toFixed(2);
+        let finalTime = 0;
 
-        document.getElementById("message").innerText =
-            "Finished in " + totalTime + " seconds!";
+        if (timerStarted) {
+
+            const elapsed =
+                performance.now() - startTime;
+
+            finalTime =
+                Math.round(elapsed / FRAME_MS) * FRAME_MS;
+        }
+
+        document.getElementById("timer").innerText =
+            (finalTime / 1000).toFixed(3);
+
+        document.getElementById("message").innerHTML =
+            `🏆 Finished in <span class="highlight">${(finalTime / 1000).toFixed(3)}s</span>`;
 
         document.getElementById("input").disabled = true;
     }
