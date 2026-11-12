@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Honcho Calculator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&display=swap">
+<style>body{text-align:center;background:#111 url(/archive.png) center/cover fixed;color:#fff;font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif}button{font-family:inherit;background:#333;color:#fff;border:1px solid #777}button.on{background:#fff;color:#111}th,td{text-align:center;padding:4px 12px}table{margin:0 auto}</style>
+</head><body><main>
+<h1>Honcho Calculator</h1>
+<p class="s">Prioritises 5 sectors then the least gold.</p>
+<div class="card"><div><b>Sector 2:</b></div><div class="row">
+<button data-m="C">C [Billerd]</button><button data-m="D">D [Noob]</button><button data-m="E">E [Greuce]</button><button data-m="Any" class="on">Any</button></div>
+<div style="margin-top:8px"><b>Honcho:</b></div><div id="hon"></div>
+<p class="note" style="margin:8px 0 0">(The Sector 2 option limits searches based on the reasonable sector a player can jump to) Any lets the calculator pick the best Sector 2. Honcho can spawn from the sector after Sector 2 up to Z.</p></div>
+<div id="out"></div>
+<script>
+var COST=[0,100,225,381,576,800,1105,1486],L=function(i){return String.fromCharCode(65+i)},mode="Any";
+function seg(a,b){var M=b-a,c=[],p=[],f,m,k;for(f=0;f<=b;f++){c.push(Array(M+1).fill(Infinity));p.push(Array(M+1).fill(-1))}
+c[a][0]=0;for(m=1;m<=M;m++)for(f=a+1;f<=b;f++)for(k=0;k<8;k++){var q=f-k-1;if(q<a)break;var v=c[q][m-1]+COST[k];if(v<c[f][m]){c[f][m]=v;p[f][m]=q}}
+return{c:c,p:p,b:b}}
+function path(s,m){var r=[s.b],f=s.b;while(m>0){f=s.p[f][m];r.push(f);m--}return r.reverse()}
+function better(t,n,best){return !best||n<best.n||(n===best.n&&t<best.v)}
+function solve(s2,h){var best=null,A,B,m1,m2;
+if(h===null||h===25){A=seg(s2,25);for(m1=1;m1<=25-s2;m1++){var v=A.c[25][m1];if(v<Infinity&&better(v,m1,best))best={v:v,n:m1,p:path(A,m1)}}
+if(!best)return null;return fin(s2,best.p,best.n)}
+A=seg(s2,h);B=seg(h,25);
+for(m1=1;m1<=h-s2;m1++)for(m2=1;m2<=25-h;m2++){var t=A.c[h][m1]+B.c[25][m2];if(t<Infinity&&better(t,m1+m2,best))best={v:t,n:m1+m2,a:m1,b:m2}}
+if(!best)return null;return fin(s2,path(A,best.a).concat(path(B,best.b).slice(1)),best.n)}
+function fin(s2,rest,n){var r=[0].concat(rest),g=0,j=[];for(var i=1;i<r.length;i++){var k=r[i]-r[i-1]-1,c=COST[k];g+=c;j.push({f:r[i-1],t:r[i],k:k,c:c})}
+return{gold:g,stops:r.length,route:r,jumps:j,s2:s2}}
+function pick(h){var opts=mode==="Any"?[1,2,3,4,5,6,7,8]:[mode==="C"?2:mode==="D"?3:4],best=null;
+opts.forEach(function(s){if(s>7+1||(h!==null&&h<=s))return;var r=solve(s,h);if(r&&(!best||r.stops<best.stops||(r.stops===best.stops&&r.gold<best.gold)))best=r});return best}
+function rs(r,h){return r.map(function(i){return i===h?'<span class="h">'+L(i)+'</span>':L(i)}).join('')}
+function lo(){return mode==="Any"?2:mode==="C"?3:mode==="D"?4:5}
+var hon=25;
+function fillSel(){if(hon<lo())hon=25;var h='';
+for(var i=lo();i<=25;i++){if(i===2||i===3)continue;h+='<button data-h="'+i+'"'+(i===hon?' class="on"':'')+'>'+L(i)+'</button> ';}
+var el=document.getElementById("hon");el.innerHTML=h;
+el.querySelectorAll("button").forEach(function(b){b.onclick=function(){hon=+b.dataset.h;fillSel();render()}})}
+function render(){var h=hon,r=pick(h),o=document.getElementById("out");
+if(!r){o.innerHTML='<div class="card">No valid route.</div>';return}
+var x='<div class="card"><p class="note" style="margin:0 0 6px">'+r.stops+' sectors · Sector 2 = '+L(r.s2)+' · Honcho at '+L(h)+'</p><div class="big">The '+rs(r.route,h)+' (<span style="color:#ff0">'+r.gold.toLocaleString()+'</span> <img src="/gold.png" alt="Gold" style="height:1em;vertical-align:-.15em">)</div>'+
+'<table style="margin-top:8px"><tr><th>Jump</th><th>Skips</th><th><img src="/gold.png" alt="Gold" style="height:1em;vertical-align:-.15em"></th></tr>';
+r.jumps.forEach(function(j){x+='<tr><td>'+L(j.f)+' → '+L(j.t)+'</td><td style="color:'+(j.k===1||j.k===2||j.k===7?'#ff0000':j.k===5||j.k===6?'#00ff00':j.k===3||j.k===4?'#ff8000':'#fff')+'">'+j.k+'</td><td><span style="color:#ff0">'+j.c.toLocaleString()+'</span> <img src="/gold.png" alt="Gold" style="height:1em;vertical-align:-.15em"></td></tr>'});
+x+='</table></div>';o.innerHTML=x}
+document.querySelectorAll("button[data-m]").forEach(function(btn){btn.onclick=function(){mode=btn.dataset.m;document.querySelectorAll("button[data-m]").forEach(function(y){y.classList.toggle("on",y===btn)});fillSel();render()}});
+fillSel();render();
+</script></main></body></html>
