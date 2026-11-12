@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Honcho Calculator</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&display=swap">
-<style>body{text-align:center;background:#111 url("https://static.wikia.nocookie.net/doors-game/images/2/25/The_Archives.png/revision/latest/scale-to-width-down/1000?cb=20260829193653") center/cover fixed;color:#fff;font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif}button{font-family:inherit;background:#333;color:#fff;border:1px solid #777}button.on{background:#fff;color:#111}th,td{text-align:center;padding:4px 12px}table{margin:0 auto}</style>
+<style>body{text-align:center;background:#000000;color:#fff;font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif}button{font-family:inherit;background:#333;color:#fff;border:1px solid #777}button.on{background:#fff;color:#111}th,td{text-align:center;padding:4px 12px}table{margin:0 auto}</style>
 </head><body><main>
 <h1>Honcho Calculator</h1>
 <p class="s">Prioritises 5 sectors then the least gold.</p>
@@ -38,9 +38,9 @@ var el=document.getElementById("hon");el.innerHTML=h;
 el.querySelectorAll("button").forEach(function(b){b.onclick=function(){hon=+b.dataset.h;fillSel();render()}})}
 function render(){var h=hon,r=pick(h),o=document.getElementById("out");
 if(!r){o.innerHTML='<div class="card">No valid route.</div>';return}
-var x='<div class="card"><p class="note" style="margin:0 0 6px">'+r.stops+' sectors · Sector 2 = '+L(r.s2)+' · Honcho at '+L(h)+'</p><div class="big">The '+rs(r.route,h)+' (<span style="color:#ff0">'+r.gold.toLocaleString()+'</span> <img src="https://static.wikia.nocookie.net/doors-game/images/1/10/Gold.png/revision/latest?cb=20220730002648" alt="Gold" style="height:1em;vertical-align:-.15em">)</div>'+
-'<table style="margin-top:8px"><tr><th>Jump</th><th>Skips</th><th><img src="https://static.wikia.nocookie.net/doors-game/images/1/10/Gold.png/revision/latest?cb=20220730002648" alt="Gold" style="height:1em;vertical-align:-.15em"></th></tr>';
-r.jumps.forEach(function(j){x+='<tr><td>'+L(j.f)+' → '+L(j.t)+'</td><td style="color:'+(j.k===1||j.k===2||j.k===7?'#ff0000':j.k===5||j.k===6?'#00ff00':j.k===3||j.k===4?'#ff8000':'#fff')+'">'+j.k+'</td><td><span style="color:#ff0">'+j.c.toLocaleString()+'</span> <img src="https://static.wikia.nocookie.net/doors-game/images/1/10/Gold.png/revision/latest?cb=20220730002648" alt="Gold" style="height:1em;vertical-align:-.15em"></td></tr>'});
+var x='<div class="card"><p class="note" style="margin:0 0 6px">'+r.stops+' sectors · Sector 2 = '+L(r.s2)+' · Honcho at '+L(h)+'</p><div class="big"><span style="color:#3399ff">'+rs(r.route,h)+'</span> (<span style="color:#ff0">'+r.gold.toLocaleString()+'</span> Gold)</div>'+
+'<table style="margin-top:8px"><tr><th>Jump</th><th>Skips</th><th>Gold</th></tr>';
+r.jumps.forEach(function(j){x+='<tr><td>'+L(j.f)+' → '+L(j.t)+'</td><td style="color:'+(j.k===1||j.k===2||j.k===7?'#ff0000':j.k===5||j.k===6?'#00ff00':j.k===3||j.k===4?'#ff8000':'#fff')+'">'+j.k+'</td><td><span style="color:#ff0">'+j.c.toLocaleString()+'</span></td></tr>'});
 x+='</table></div>';o.innerHTML=x}
 document.querySelectorAll("button[data-m]").forEach(function(btn){btn.onclick=function(){mode=btn.dataset.m;document.querySelectorAll("button[data-m]").forEach(function(y){y.classList.toggle("on",y===btn)});fillSel();render()}});
 fillSel();render();
