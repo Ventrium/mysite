@@ -3,14 +3,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Honcho Calculator</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&display=swap">
-<style>body{text-align:center;background:#000000;color:#fff;font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif}button{font-family:inherit;background:#333;color:#fff;border:1px solid #777}button.on{background:#fff;color:#111}th,td{text-align:center;padding:4px 12px}table{margin:0 auto}</style>
+<style>body{text-align:center;background:#000000;color:#fff;font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif}button{font-family:inherit;background:#333;color:#fff;border:1px solid #777}button.on{background:#fff;color:#111}th,td{text-align:center;padding:4px 12px}table{margin:0 auto}input{font-family:inherit;font-size:20px;letter-spacing:2px;text-transform:uppercase;text-align:center;width:90%;max-width:420px;padding:8px;margin-top:6px;background:#333;color:#fff;border:1px solid #777}.err{color:#ff0000}.warn{color:#ff8000}</style>
 </head><body><main>
 <h1>Honcho Calculator</h1>
 <p class="s">Prioritises 5 sectors then the least gold.</p>
 <div class="card"><div><b>Sector 2:</b></div><div class="row">
-<button data-m="C">C [Billerd]</button><button data-m="D">D [Noob]</button><button data-m="E">E [Greuce]</button><button data-m="F">F</button><button data-m="G">G</button><button data-m="H">H</button><button data-m="I">I</button><button data-m="Any" class="on">Any</button></div>
-<div style="margin-top:8px"><b>Honcho:</b></div><div id="hon"></div>
-<p class="note" style="margin:8px 0 0">(The Sector 2 option limits searches based on the reasonable sector a player can jump to) Any lets the calculator pick the best Sector 2. Honcho can spawn from the sector after Sector 2 up to Z.</p></div>
+<button data-m="C">C [Billerd]</button><button data-m="D">D [Noob]</button><button data-m="E">E [Greuce]</button><button data-m="F">F</button><button data-m="G">G</button><button data-m="H">H</button><button data-m="I">I</button><button data-m="Any" class="on">Any</button><button data-m="Custom">Custom</button></div>
+<div id="honwrap"><div style="margin-top:8px"><b>Honcho:</b></div><div id="hon"></div>
+<p class="note" style="margin:8px 0 0">(The Sector 2 option limits searches based on the reasonable sector a player can jump to) Any lets the calculator pick the best Sector 2. Honcho can spawn from the sector after Sector 2 up to Z.</p></div><div id="cust" style="display:none;margin-top:8px"><b>Route:</b><div><input id="r" value="ACEGIKMOQSUWYZ" maxlength="40" autocomplete="off" spellcheck="false"></div><p class="note" style="margin:8px 0 0">Type a route from A to Z (e.g. ACEGIKMOQSUWYZ) to see what it costs.</p></div></div>
 <div id="out"></div>
 <script>
 var COST=[0,100,225,381,576,820,1125,1506],L=function(i){return String.fromCharCode(65+i)},mode="Any";
@@ -30,13 +30,30 @@ return{gold:g,stops:r.length,route:r,jumps:j,s2:s2}}
 function pick(h){var opts=mode==="Any"?[1,2,3,4,5,6,7,8]:[mode.charCodeAt(0)-65],best=null;
 opts.forEach(function(s){if(s>7+1||(h!==null&&h<=s))return;var r=solve(s,h);if(r&&(!best||r.stops<best.stops||(r.stops===best.stops&&r.gold<best.gold)))best=r});return best}
 function rs(r,h){return r.map(function(i){return i===h?'<span class="h">'+L(i)+'</span>':L(i)}).join('')}
-function lo(){return mode==="Any"?2:mode.charCodeAt(0)-64}
+function lo(){return mode==="Any"||mode==="Custom"?2:mode.charCodeAt(0)-64}
 var hon=25;
 function fillSel(){if(hon<lo())hon=25;var h='';
 for(var i=lo();i<=25;i++){if(i===2||i===3)continue;h+='<button data-h="'+i+'"'+(i===hon?' class="on"':'')+'>'+L(i)+'</button> ';}
 var el=document.getElementById("hon");el.innerHTML=h;
 el.querySelectorAll("button").forEach(function(b){b.onclick=function(){hon=+b.dataset.h;fillSel();render()}})}
-function render(){var h=hon,r=pick(h),o=document.getElementById("out");
+function col(k){return k===1||k===2||k===7?"#ff0000":k===5||k===6?"#00ff00":k===3||k===4?"#ff8000":"#fff"}
+function renderCustom(){var v=document.getElementById("r").value.toUpperCase().replace(/[^A-Z]/g,""),o=document.getElementById("out");
+if(v.length<2){o.innerHTML='<div class="card note">Enter at least two sectors.</div>';return}
+var c=v.split("").map(function(ch){return ch.charCodeAt(0)-65}),errs=[],warns=[],jumps=[],g=0,i;
+if(c[0]!==0)warns.push("Route doesn’t start at A.");
+if(c[c.length-1]!==25)warns.push("Route doesn’t end at Z.");
+for(i=1;i<c.length;i++){var d=c[i]-c[i-1],a=L(c[i-1]),b=L(c[i]);
+if(d<=0)errs.push(a+" → "+b+" goes backwards or repeats a sector.");
+else if(d>8)errs.push(a+" → "+b+" skips "+(d-1)+" sectors; the maximum is 7.");
+else{jumps.push({f:a,t:b,k:d-1,c:COST[d-1]});g+=COST[d-1]}}
+var h='<div class="card">';
+if(errs.length){o.innerHTML=h+'<p class="err">'+errs.join("<br>")+"</p></div>";return}
+warns.forEach(function(w){h+='<p class="warn" style="margin:0 0 6px">'+w+"</p>"});
+h+='<p class="note" style="margin:0 0 6px">'+c.length+' sectors</p><div class="big"><span style="color:#3399ff">'+v+'</span> (<span style="color:#ff0">'+g.toLocaleString()+'</span> Gold)</div>';
+h+='<table style="margin-top:8px"><tr><th>Jump</th><th>Skips</th><th>Gold</th></tr>';
+jumps.forEach(function(j){h+="<tr><td>"+j.f+" → "+j.t+'</td><td style="color:'+col(j.k)+'">'+j.k+'</td><td><span style="color:#ff0">'+j.c.toLocaleString()+"</span></td></tr>"});
+o.innerHTML=h+"</table></div>"}
+function render(){var custom=mode==="Custom";document.getElementById("honwrap").style.display=custom?"none":"";document.getElementById("cust").style.display=custom?"":"none";if(custom){renderCustom();return}var h=hon,r=pick(h),o=document.getElementById("out");
 if(!r){o.innerHTML='<div class="card">No valid route.</div>';return}
 var x='<div class="card"><p class="note" style="margin:0 0 6px">'+r.stops+' sectors · Sector 2 = '+L(r.s2)+' · Honcho at '+L(h)+'</p><div class="big"><span style="color:#3399ff">'+rs(r.route,h)+'</span> (<span style="color:#ff0">'+r.gold.toLocaleString()+'</span> Gold)</div>'+
 '<table style="margin-top:8px"><tr><th>Jump</th><th>Skips</th><th>Gold</th></tr>';
@@ -44,4 +61,5 @@ r.jumps.forEach(function(j){x+='<tr><td>'+L(j.f)+' → '+L(j.t)+'</td><td style=
 x+='</table></div>';o.innerHTML=x}
 document.querySelectorAll("button[data-m]").forEach(function(btn){btn.onclick=function(){mode=btn.dataset.m;document.querySelectorAll("button[data-m]").forEach(function(y){y.classList.toggle("on",y===btn)});fillSel();render()}});
 fillSel();render();
+document.getElementById("r").oninput=renderCustom;
 </script></main></body></html>
