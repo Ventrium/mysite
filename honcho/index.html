@@ -8,12 +8,12 @@
 <h1>Honcho Calculator</h1>
 <p class="s">Prioritises 5 sectors then the least gold.</p>
 <div class="card"><div><b>Sector 2:</b></div><div class="row">
-<button data-m="C">C [Billerd]</button><button data-m="D">D [Noob]</button><button data-m="E">E [Greuce]</button><button data-m="Any" class="on">Any</button></div>
+<button data-m="C">C [Billerd]</button><button data-m="D">D [Noob]</button><button data-m="E">E [Greuce]</button><button data-m="F">F</button><button data-m="G">G</button><button data-m="H">H</button><button data-m="I">I</button><button data-m="Any" class="on">Any</button></div>
 <div style="margin-top:8px"><b>Honcho:</b></div><div id="hon"></div>
 <p class="note" style="margin:8px 0 0">(The Sector 2 option limits searches based on the reasonable sector a player can jump to) Any lets the calculator pick the best Sector 2. Honcho can spawn from the sector after Sector 2 up to Z.</p></div>
 <div id="out"></div>
 <script>
-var COST=[0,100,225,381,576,800,1105,1486],L=function(i){return String.fromCharCode(65+i)},mode="Any";
+var COST=[0,100,225,381,576,820,1125,1506],L=function(i){return String.fromCharCode(65+i)},mode="Any";
 function seg(a,b){var M=b-a,c=[],p=[],f,m,k;for(f=0;f<=b;f++){c.push(Array(M+1).fill(Infinity));p.push(Array(M+1).fill(-1))}
 c[a][0]=0;for(m=1;m<=M;m++)for(f=a+1;f<=b;f++)for(k=0;k<8;k++){var q=f-k-1;if(q<a)break;var v=c[q][m-1]+COST[k];if(v<c[f][m]){c[f][m]=v;p[f][m]=q}}
 return{c:c,p:p,b:b}}
@@ -27,10 +27,10 @@ for(m1=1;m1<=h-s2;m1++)for(m2=1;m2<=25-h;m2++){var t=A.c[h][m1]+B.c[25][m2];if(t
 if(!best)return null;return fin(s2,path(A,best.a).concat(path(B,best.b).slice(1)),best.n)}
 function fin(s2,rest,n){var r=[0].concat(rest),g=0,j=[];for(var i=1;i<r.length;i++){var k=r[i]-r[i-1]-1,c=COST[k];g+=c;j.push({f:r[i-1],t:r[i],k:k,c:c})}
 return{gold:g,stops:r.length,route:r,jumps:j,s2:s2}}
-function pick(h){var opts=mode==="Any"?[1,2,3,4,5,6,7,8]:[mode==="C"?2:mode==="D"?3:4],best=null;
+function pick(h){var opts=mode==="Any"?[1,2,3,4,5,6,7,8]:[mode.charCodeAt(0)-65],best=null;
 opts.forEach(function(s){if(s>7+1||(h!==null&&h<=s))return;var r=solve(s,h);if(r&&(!best||r.stops<best.stops||(r.stops===best.stops&&r.gold<best.gold)))best=r});return best}
 function rs(r,h){return r.map(function(i){return i===h?'<span class="h">'+L(i)+'</span>':L(i)}).join('')}
-function lo(){return mode==="Any"?2:mode==="C"?3:mode==="D"?4:5}
+function lo(){return mode==="Any"?2:mode.charCodeAt(0)-64}
 var hon=25;
 function fillSel(){if(hon<lo())hon=25;var h='';
 for(var i=lo();i<=25;i++){if(i===2||i===3)continue;h+='<button data-h="'+i+'"'+(i===hon?' class="on"':'')+'>'+L(i)+'</button> ';}
