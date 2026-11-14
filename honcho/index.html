@@ -1,65 +1,444 @@
+
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8">
+<html lang="en">
+<head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Honcho Calculator</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&display=swap">
-<style>body{text-align:center;background:#000000;color:#fff;font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif}button{font-family:inherit;background:#333;color:#fff;border:1px solid #777}button.on{background:#fff;color:#111}th,td{text-align:center;padding:4px 12px}table{margin:0 auto}input{font-family:inherit;font-size:20px;letter-spacing:2px;text-transform:uppercase;text-align:center;width:90%;max-width:420px;padding:8px;margin-top:6px;background:#333;color:#fff;border:1px solid #777}.err{color:#ff0000}.warn{color:#ff8000}</style>
-</head><body><main>
+
+<style>
+* { box-sizing:border-box; }
+
+body {
+    margin:0;
+    padding:20px 12px;
+    text-align:center;
+    background:
+      linear-gradient(rgba(0,0,0,.76),rgba(0,0,0,.88)),
+      url("https://www.theventrium.com/honcho/archives.webp") center/cover fixed;
+    color:white;
+    font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif;
+    min-height:100vh;
+}
+
+h1 { margin:10px 0 5px; }
+.s,.note { color:#bbb; font-size:13px; }
+.card {
+    background:rgba(15,15,15,.88);
+    border:1px solid #444;
+    border-radius:9px;
+    padding:14px;
+    margin:12px auto;
+    max-width:650px;
+    backdrop-filter:blur(5px);
+}
+
+button {
+    font-family:inherit;
+    background:#333;
+    color:white;
+    border:1px solid #777;
+    border-radius:4px;
+    padding:7px 10px;
+    margin:3px;
+    cursor:pointer;
+}
+button.on { background:white; color:#111; }
+button:active { opacity:.7; }
+
+.row {
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+}
+
+input {
+    font-family:inherit;
+    font-size:20px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    text-align:center;
+    width:90%;
+    max-width:420px;
+    padding:8px;
+    margin-top:6px;
+    background:#333;
+    color:white;
+    border:1px solid #777;
+    border-radius:4px;
+}
+
+table { margin:8px auto 0; border-collapse:collapse; }
+th,td { text-align:center; padding:6px 12px; }
+th { border-bottom:1px solid #666; }
+tr:not(:last-child) td { border-bottom:1px solid #333; }
+
+.err { color:#ff3333; }
+.warn { color:#ff9900; }
+.big { font-size:20px; font-weight:bold; overflow-wrap:anywhere; }
+.h { color:#ff9900; }
+.gold { color:#ffff00; }
+.blue { color:#3399ff; }
+
+@media(max-width:420px) {
+    th,td { padding:5px 7px; }
+    .big { font-size:17px; }
+}
+</style>
+</head>
+
+<body>
+<main>
 <h1>Honcho Calculator</h1>
-<p class="s">Prioritises 5 sectors then the least gold.</p>
-<div class="card"><div><b>Sector 2:</b></div><div class="row">
-<button data-m="C">C [Billerd]</button><button data-m="D">D [Noob]</button><button data-m="E">E [Greuce]</button><button data-m="F">F</button><button data-m="G">G</button><button data-m="H">H</button><button data-m="I">I</button><button data-m="Any" class="on">Any</button><button data-m="Custom">Custom</button></div>
-<div id="honwrap"><div style="margin-top:8px"><b>Honcho:</b></div><div id="hon"></div>
-<p class="note" style="margin:8px 0 0">(The Sector 2 option limits searches based on the reasonable sector a player can jump to) Any lets the calculator pick the best Sector 2. Honcho can spawn from the sector after Sector 2 up to Z.</p></div><div id="cust" style="display:none;margin-top:8px"><b>Route:</b><div><input id="r" value="ACEGIKMOQSUWYZ" maxlength="40" autocomplete="off" spellcheck="false"></div><p class="note" style="margin:8px 0 0">Type a route from A to Z (e.g. ACEGIKMOQSUWYZ) to see what it costs.</p></div></div>
+<p class="s">Prioritises the fewest sectors, least Gold, then lowest alphabetical sum.</p>
+
+<div class="card">
+
+<b>Sector 2:</b>
+<div class="row" id="modes">
+<button data-m="C">C [Billerd]</button>
+<button data-m="D">D [Noob]</button>
+<button data-m="E">E [Greuce]</button>
+<button data-m="F">F</button>
+<button data-m="G">G</button>
+<button data-m="H">H</button>
+<button data-m="I">I</button>
+<button data-m="Any" class="on">Any</button>
+<button data-m="Custom">Custom</button>
+</div>
+
+<div id="honwrap">
+<div style="margin-top:8px"><b>Honcho:</b></div>
+<div id="hon"></div>
+<p class="note">
+The Sector 2 option limits searches based on the reasonable sector a player can jump to.
+Any lets the calculator pick the best Sector 2.
+Honcho can spawn from the sector after Sector 2 up to Z.
+</p>
+</div>
+
+<div id="cust" style="display:none">
+<b>Route:</b>
+<div>
+<input id="r" value="ACEGIKMOQSUWYZ" maxlength="40"
+autocomplete="off" spellcheck="false">
+</div>
+<p class="note">Type a route from A to Z to calculate its cost.</p>
+</div>
+</div>
+
 <div id="out"></div>
+
 <script>
-var COST=[0,100,225,381,576,820,1125,1506],L=function(i){return String.fromCharCode(65+i)},mode="Any";
-function seg(a,b){var M=b-a,c=[],p=[],f,m,k;for(f=0;f<=b;f++){c.push(Array(M+1).fill(Infinity));p.push(Array(M+1).fill(-1))}
-c[a][0]=0;for(m=1;m<=M;m++)for(f=a+1;f<=b;f++)for(k=0;k<8;k++){var q=f-k-1;if(q<a)break;var v=c[q][m-1]+COST[k];if(v<c[f][m]){c[f][m]=v;p[f][m]=q}}
-return{c:c,p:p,b:b}}
-function path(s,m){var r=[s.b],f=s.b;while(m>0){f=s.p[f][m];r.push(f);m--}return r.reverse()}
-function better(t,n,best){return !best||n<best.n||(n===best.n&&t<best.v)}
-function solve(s2,h){var best=null,A,B,m1,m2;
-if(h===null||h===25){A=seg(s2,25);for(m1=1;m1<=25-s2;m1++){var v=A.c[25][m1];if(v<Infinity&&better(v,m1,best))best={v:v,n:m1,p:path(A,m1)}}
-if(!best)return null;return fin(s2,best.p,best.n)}
-A=seg(s2,h);B=seg(h,25);
-for(m1=1;m1<=h-s2;m1++)for(m2=1;m2<=25-h;m2++){var t=A.c[h][m1]+B.c[25][m2];if(t<Infinity&&better(t,m1+m2,best))best={v:t,n:m1+m2,a:m1,b:m2}}
-if(!best)return null;return fin(s2,path(A,best.a).concat(path(B,best.b).slice(1)),best.n)}
-function fin(s2,rest,n){var r=[0].concat(rest),g=0,j=[];for(var i=1;i<r.length;i++){var k=r[i]-r[i-1]-1,c=COST[k];g+=c;j.push({f:r[i-1],t:r[i],k:k,c:c})}
-return{gold:g,stops:r.length,route:r,jumps:j,s2:s2}}
-function pick(h){var opts=mode==="Any"?[1,2,3,4,5,6,7,8]:[mode.charCodeAt(0)-65],best=null;
-opts.forEach(function(s){if(s>7+1||(h!==null&&h<=s))return;var r=solve(s,h);if(r&&(!best||r.stops<best.stops||(r.stops===best.stops&&r.gold<best.gold)))best=r});return best}
-function rs(r,h){return r.map(function(i){return i===h?'<span class="h">'+L(i)+'</span>':L(i)}).join('')}
-function lo(){return mode==="Any"||mode==="Custom"?2:mode.charCodeAt(0)-64}
-var hon=25;
-function fillSel(){if(hon<lo())hon=25;var h='';
-for(var i=lo();i<=25;i++){if(i===2||i===3)continue;h+='<button data-h="'+i+'"'+(i===hon?' class="on"':'')+'>'+L(i)+'</button> ';}
-var el=document.getElementById("hon");el.innerHTML=h;
-el.querySelectorAll("button").forEach(function(b){b.onclick=function(){hon=+b.dataset.h;fillSel();render()}})}
-function col(k){return k===1||k===2||k===7?"#ff0000":k===5||k===6?"#00ff00":k===3||k===4?"#ff8000":"#fff"}
-function renderCustom(){var v=document.getElementById("r").value.toUpperCase().replace(/[^A-Z]/g,""),o=document.getElementById("out");
-if(v.length<2){o.innerHTML='<div class="card note">Enter at least two sectors.</div>';return}
-var c=v.split("").map(function(ch){return ch.charCodeAt(0)-65}),errs=[],warns=[],jumps=[],g=0,i;
-if(c[0]!==0)warns.push("Route doesn’t start at A.");
-if(c[c.length-1]!==25)warns.push("Route doesn’t end at Z.");
-for(i=1;i<c.length;i++){var d=c[i]-c[i-1],a=L(c[i-1]),b=L(c[i]);
-if(d<=0)errs.push(a+" → "+b+" goes backwards or repeats a sector.");
-else if(d>8)errs.push(a+" → "+b+" skips "+(d-1)+" sectors; the maximum is 7.");
-else{jumps.push({f:a,t:b,k:d-1,c:COST[d-1]});g+=COST[d-1]}}
-var h='<div class="card">';
-if(errs.length){o.innerHTML=h+'<p class="err">'+errs.join("<br>")+"</p></div>";return}
-warns.forEach(function(w){h+='<p class="warn" style="margin:0 0 6px">'+w+"</p>"});
-h+='<p class="note" style="margin:0 0 6px">'+c.length+' sectors</p><div class="big"><span style="color:#3399ff">'+v+'</span> (<span style="color:#ff0">'+g.toLocaleString()+'</span> Gold)</div>';
-h+='<table style="margin-top:8px"><tr><th>Jump</th><th>Skips</th><th>Gold</th></tr>';
-jumps.forEach(function(j){h+="<tr><td>"+j.f+" → "+j.t+'</td><td style="color:'+col(j.k)+'">'+j.k+'</td><td><span style="color:#ff0">'+j.c.toLocaleString()+"</span></td></tr>"});
-o.innerHTML=h+"</table></div>"}
-function render(){var custom=mode==="Custom";document.getElementById("honwrap").style.display=custom?"none":"";document.getElementById("cust").style.display=custom?"":"none";if(custom){renderCustom();return}var h=hon,r=pick(h),o=document.getElementById("out");
-if(!r){o.innerHTML='<div class="card">No valid route.</div>';return}
-var x='<div class="card"><p class="note" style="margin:0 0 6px">'+r.stops+' sectors · Sector 2 = '+L(r.s2)+' · Honcho at '+L(h)+'</p><div class="big"><span style="color:#3399ff">'+rs(r.route,h)+'</span> (<span style="color:#ff0">'+r.gold.toLocaleString()+'</span> Gold)</div>'+
-'<table style="margin-top:8px"><tr><th>Jump</th><th>Skips</th><th>Gold</th></tr>';
-r.jumps.forEach(function(j){x+='<tr><td>'+L(j.f)+' → '+L(j.t)+'</td><td style="color:'+(j.k===1||j.k===2||j.k===7?'#ff0000':j.k===5||j.k===6?'#00ff00':j.k===3||j.k===4?'#ff8000':'#fff')+'">'+j.k+'</td><td><span style="color:#ff0">'+j.c.toLocaleString()+'</span></td></tr>'});
-x+='</table></div>';o.innerHTML=x}
-document.querySelectorAll("button[data-m]").forEach(function(btn){btn.onclick=function(){mode=btn.dataset.m;document.querySelectorAll("button[data-m]").forEach(function(y){y.classList.toggle("on",y===btn)});fillSel();render()}});
-fillSel();render();
+const COST=[0,100,225,381,576,820,1125,1506];
+const L=i=>String.fromCharCode(65+i);
+
+let mode="Any";
+let hon=25;
+
+function seg(a,b) {
+    const M=b-a;
+    const c=[],p=[],z=[];
+
+    for(let f=0;f<=b;f++) {
+        c.push(Array(M+1).fill(Infinity));
+        p.push(Array(M+1).fill(-1));
+        z.push(Array(M+1).fill(Infinity));
+    }
+
+    c[a][0]=0;
+    z[a][0]=0;
+
+    for(let m=1;m<=M;m++) {
+        for(let f=a+1;f<=b;f++) {
+            for(let k=0;k<8;k++) {
+                const q=f-k-1;
+                if(q<a) break;
+
+                const v=c[q][m-1]+COST[k];
+                const s=z[q][m-1]+f+1;
+
+                if(v<c[f][m] || (v===c[f][m] && s<z[f][m])) {
+                    c[f][m]=v;
+                    p[f][m]=q;
+                    z[f][m]=s;
+                }
+            }
+        }
+    }
+
+    return {c,p,z,b};
+}
+
+function path(s,m) {
+    let r=[s.b],f=s.b;
+    while(m>0) {
+        f=s.p[f][m];
+        r.push(f);
+        m--;
+    }
+    return r.reverse();
+}
+
+function better(t,n,s,best) {
+    return !best ||
+        t<best.v ||
+        (t===best.v && n<best.n) ||
+        (t===best.v && n===best.n && s<best.s);
+}
+
+function solve(s2,h) {
+    let best=null,A,B;
+
+    if(h===null || h===25) {
+        A=seg(s2,25);
+
+        for(let m=1;m<=25-s2;m++) {
+            const v=A.c[25][m];
+            const s=A.z[25][m];
+
+            if(v<Infinity && better(v,m,s,best)) {
+                best={v,n:m,s,p:path(A,m)};
+            }
+        }
+
+        if(!best) return null;
+        return fin(s2,best.p,best.n);
+    }
+
+    A=seg(s2,h);
+    B=seg(h,25);
+
+    for(let m1=1;m1<=h-s2;m1++) {
+        for(let m2=1;m2<=25-h;m2++) {
+            const t=A.c[h][m1]+B.c[25][m2];
+            const s=A.z[h][m1]+B.z[25][m2];
+
+            if(t<Infinity && better(t,m1+m2,s,best)) {
+                best={v:t,n:m1+m2,s,a:m1,b:m2};
+            }
+        }
+    }
+
+    if(!best) return null;
+
+    return fin(
+        s2,
+        path(A,best.a).concat(path(B,best.b).slice(1)),
+        best.n
+    );
+}
+
+function fin(s2,rest,n) {
+    const r=[0].concat(rest);
+    let g=0,j=[];
+
+    for(let i=1;i<r.length;i++) {
+        const k=r[i]-r[i-1]-1;
+        const c=COST[k];
+        g+=c;
+        j.push({f:r[i-1],t:r[i],k,c});
+    }
+
+    const alpha=r.reduce((a,i)=>a+i+1,0);
+
+    return {
+        gold:g,
+        stops:r.length,
+        route:r,
+        jumps:j,
+        s2,
+        alpha
+    };
+}
+
+function pick(h) {
+    const opts=mode==="Any"
+        ?[1,2,3,4,5,6,7,8]
+        :[mode.charCodeAt(0)-65];
+
+    let best=null;
+
+    opts.forEach(s=>{
+        if(s>8 || (h!==null && h<=s)) return;
+
+        const r=solve(s,h);
+        if(!r) return;
+
+        if(!best ||
+           r.stops<best.stops ||
+           (r.stops===best.stops && r.gold<best.gold) ||
+           (r.stops===best.stops && r.gold===best.gold && r.alpha<best.alpha)) {
+            best=r;
+        }
+    });
+
+    return best;
+}
+
+function rs(r,h) {
+    return r.map(i=>
+        i===h?'<span class="h">'+L(i)+'</span>':L(i)
+    ).join("");
+}
+
+function lo() {
+    return mode==="Any" || mode==="Custom"
+        ?2
+        :mode.charCodeAt(0)-64;
+}
+
+function fillSel() {
+    if(hon<lo()) hon=25;
+
+    let h="";
+
+    for(let i=lo();i<=25;i++) {
+        if(i===2 || i===3) continue;
+
+        h+='<button data-h="'+i+'"'+
+           (i===hon?' class="on"':'')+'>'+L(i)+'</button> ';
+    }
+
+    const el=document.getElementById("hon");
+    el.innerHTML=h;
+
+    el.querySelectorAll("button").forEach(b=>{
+        b.onclick=()=>{
+            hon=+b.dataset.h;
+            fillSel();
+            render();
+        };
+    });
+}
+
+function col(k) {
+    if(k===1 || k===2 || k===7) return "#ff0000";
+    if(k===5 || k===6) return "#00ff00";
+    if(k===3 || k===4) return "#ff8000";
+    return "#fff";
+}
+
+function table(jumps) {
+    let h='<table><tr><th>Skip</th><th>Counts</th><th>Gold</th></tr>';
+
+    jumps.forEach(j=>{
+        h+='<tr><td>'+L(j.f)+' → '+L(j.t)+'</td>'+
+        '<td style="color:'+col(j.k)+'">'+j.k+'</td>'+
+        '<td class="gold">'+j.c.toLocaleString()+'</td></tr>';
+    });
+
+    return h+'</table>';
+}
+
+function renderCustom() {
+    const v=document.getElementById("r").value
+        .toUpperCase().replace(/[^A-Z]/g,"");
+    const o=document.getElementById("out");
+
+    if(v.length<2) {
+        o.innerHTML='<div class="card note">Enter at least two sectors.</div>';
+        return;
+    }
+
+    const c=v.split("").map(ch=>ch.charCodeAt(0)-65);
+    const errs=[],warns=[],jumps=[];
+    let g=0;
+
+    if(c[0]!==0) warns.push("Route doesn't start at A.");
+    if(c[c.length-1]!==25) warns.push("Route doesn't end at Z.");
+
+    for(let i=1;i<c.length;i++) {
+        const d=c[i]-c[i-1];
+        const a=L(c[i-1]),b=L(c[i]);
+
+        if(d<=0) {
+            errs.push(a+" → "+b+" goes backwards or repeats a sector.");
+        } else if(d>8) {
+            errs.push(a+" → "+b+" skips "+(d-1)+" sectors; maximum is 7.");
+        } else {
+            const j={f:c[i-1],t:c[i],k:d-1,c:COST[d-1]};
+            jumps.push(j);
+            g+=j.c;
+        }
+    }
+
+    let h='<div class="card">';
+
+    if(errs.length) {
+        o.innerHTML=h+'<p class="err">'+errs.join("<br>")+'</p></div>';
+        return;
+    }
+
+    warns.forEach(w=>{
+        h+='<p class="warn">'+w+'</p>';
+    });
+
+    const alpha=c.reduce((a,i)=>a+i+1,0);
+
+    h+='<p class="note">'+c.length+' sectors</p>';
+    h+='<div class="big"><span class="blue">'+v+
+        '</span> (<span class="gold">'+g.toLocaleString()+
+        '</span> Gold)</div>';
+    h+='<p class="note">Alphabetical sum: '+alpha+'</p>';
+    h+=table(jumps);
+
+    o.innerHTML=h+'</div>';
+}
+
+function render() {
+    const custom=mode==="Custom";
+
+    document.getElementById("honwrap").style.display=custom?"none":"";
+    document.getElementById("cust").style.display=custom?"":"none";
+
+    if(custom) {
+        renderCustom();
+        return;
+    }
+
+    const r=pick(hon);
+    const o=document.getElementById("out");
+
+    if(!r) {
+        o.innerHTML='<div class="card">No valid route.</div>';
+        return;
+    }
+
+    let h='<div class="card">';
+    h+='<p class="note">'+r.stops+
+        ' sectors · Sector 2 = '+L(r.s2)+
+        ' · Honcho at '+L(hon)+'</p>';
+
+    h+='<div class="big"><span class="blue">'+
+        rs(r.route,hon)+'</span> (<span class="gold">'+
+        r.gold.toLocaleString()+'</span> Gold)</div>';
+
+    h+='<p class="note">Alphabetical sum: '+r.alpha+'</p>';
+    h+=table(r.jumps);
+
+    o.innerHTML=h+'</div>';
+}
+
+document.querySelectorAll("button[data-m]").forEach(btn=>{
+    btn.onclick=()=>{
+        mode=btn.dataset.m;
+
+        document.querySelectorAll("button[data-m]").forEach(y=>{
+            y.classList.toggle("on",y===btn);
+        });
+
+        fillSel();
+        render();
+    };
+});
+
 document.getElementById("r").oninput=renderCustom;
-</script></main></body></html>
+
+fillSel();
+render();
+</script>
+</main>
+</body>
+</html>
